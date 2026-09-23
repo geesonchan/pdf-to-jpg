@@ -10,6 +10,9 @@ fixtures/manual/
 # 脚本生成的测试 PDF（可随时重新生成）
 fixtures/generated/
 
+# 从 node_modules 复制过来的 pdf.js 运行时资源（prebuild 自动生成）
+public/pdfjs/
+
 # 编辑器与系统
 .DS_Store
 .idea/

@@ -46,7 +46,7 @@
 
 ---
 
-## [~] 阶段 2：界面
+## [x] 阶段 2：界面（已验收，含验收后的修订）
 
 - [x] 拖放区 + 文件选择按钮（支持键盘操作；拖到页面其它地方不会让浏览器直接打开文件）
 - [x] 设置面板：DPI 三选一分段控件、质量滑块、页码范围输入
@@ -56,9 +56,18 @@
 - [x] 不支持提示接入正式界面，两道防线共用同一出口
 - [x] 全部错误码都有具体的双语提示，不出现笼统的「出错了」
 - [x] 触控目标 ≥ 44px；输入框 16px 防 iOS 自动放大；处理 iPhone 安全区
-- [ ] **iPhone Safari 实测（待 Leo 完成）**
+- [x] iPhone Safari 实测（Leo 2026-09-22 通过：10 页以上转换、中文 PDF、输入框不放大、底部按钮不被遮挡）
 
-**验收**：桌面 Chrome 已完成一次 10 页转换（生产构建 406 ms）。**iPhone Safari 尚未验证** —— 本机没有完整 Xcode，无法启动 iOS 模拟器，需要 Leo 用真机测一次。
+**验收**：✅ 已通过。桌面 Chrome 10 页转换 406 ms；iPhone Safari 由 Leo 真机实测通过。
+
+**验收后的修订（已完成）**：
+- [x] 提高次要按钮对比度到 WCAG AA（新增 `--border-strong`，D34），并用 `contrast.test.js` 解析 `style.css` 做回归守卫
+- [x] 缩略图上限保留但把未显示张数说清楚（D33），`planThumbnails()` 保证 `shown + hidden === total`
+- [x] 降采样提示写出实际输出尺寸（例如「输出为 3445×4869 像素」）
+- [x] 分享 / 存到相册按钮（D29，上限暂定 20 张待真机验证）
+- [x] pdf.js `wasm/` 随站打包并设 `wasmUrl`（D31）
+- [x] 页面空闲时后台预加载 pdf.js（D32）
+- [x] 画布像素上限的决策记录（D30）
 
 **留到阶段 3**：
 - 加密 PDF 的密码输入框（目前捕获到密码异常时给出「暂不支持」的提示，不会崩）
@@ -86,6 +95,9 @@
 - 引入 Playwright：自动跑生成的测试 PDF，检查输出数量、文件名、图片尺寸
 - **Playwright 网络拦截**：对整个转换过程拦截请求，断言只出现同源地址。这是「无外部请求」的**权威检查**（D17）；CI 里对 HTML/CSS 的 grep 只是早期粗筛（D16），阶段 4 的 CSP 是第三道防线
 - 手动样本放 `fixtures/manual/`（由 Leo 提供）：加密 PDF、扫描件、中文 PDF、真实厂商规格书
+- **排查那份 13 页中文 PDF 的全页降采样**：拿到文件后用调试页的 `console.table` 诊断，确认页面点尺寸与 userUnit（DECISIONS 第八节）
+- **真机实测分享上限**，确定 `SHARE_FILE_LIMIT` 的最终值（D29 目前暂定 20）
+- `cmaps/` 与 `standard_fonts/` 加进 `scripts/copy-pdfjs-assets.js` 的资源表（wasm 已在里面）
 - **`fixtures/manual/` 不存在或为空时，依赖它的测试自动跳过（skip）而不是失败**。该目录不入库（C6），CI 上永远没有它，不能让它把流水线拖红；跳过时要打印清楚的提示，说明跳过了哪些用例
 
 **验收**：v1.0 验收清单全部通过。
@@ -95,7 +107,8 @@
 ## [ ] 阶段 4：隐私加固与发布
 
 - `index.html` 加 CSP 元标签，起点：
-  `default-src 'self'; connect-src 'self'; script-src 'self'; worker-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'`
+  `default-src 'self'; connect-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'`
+  （`'wasm-unsafe-eval'` 是 pdf.js 的 wasm 解码器所需，只允许编译 WebAssembly，不恢复 `eval()`；见 D31）
   如果 PDF.js 需要放宽，只做最小修改并记入 `DECISIONS.md`
 - 页脚：隐私说明、源码链接、版本号
 - 打 tag `v1.0.0`，写复盘文档

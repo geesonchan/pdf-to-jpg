@@ -6,7 +6,7 @@
  */
 
 import './style.css'
-import { convertPdfToJpegs } from './engine/convert.js'
+import { convertPdfToJpegs, preloadEngine } from './engine/convert.js'
 import { EngineError, isBrowserLevelFailure } from './engine/errors.js'
 import { makePageFilename, makeZipFilename } from './engine/filename.js'
 import { detectSupport } from './engine/support.js'
@@ -19,6 +19,14 @@ import {
 } from './i18n/lang.js'
 import { buildZip, shouldZip, triggerDownload } from './ui/download.js'
 import { formatBytes, normalizeDpi, normalizeQuality, progressPercent } from './ui/format.js'
+import { planThumbnails, summarizeClamped } from './ui/results.js'
+import {
+  SHARE_FILE_LIMIT,
+  buildShareFiles,
+  canShareFiles,
+  shareFiles,
+  withinShareLimit,
+} from './ui/share.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -28,9 +36,9 @@ const MAX_THUMBS = 12
 const state = {
   lang: 'en',
   file: null,
-  results: [], // { name, blob }
+  results: [], // { name, blob, width, height, clamped }
   thumbUrls: [],
-  clampedCount: 0,
+  shareFiles: [], // 转换结束时就备好 —— navigator.share 必须同步调用
   controller: null,
 }
 
@@ -167,11 +175,12 @@ async function convert() {
     for await (const page of convertPdfToJpegs(buffer, readOptions(), {
       signal: state.controller.signal,
     })) {
-      if (page.clamped) state.clampedCount += 1
-
       state.results.push({
         name: makePageFilename(state.file.name, page.pageNumber, page.totalPages),
         blob: page.blob,
+        width: page.width,
+        height: page.height,
+        clamped: page.clamped,
       })
 
       setProgress(
@@ -180,6 +189,9 @@ async function convert() {
         t(state.lang, 'progress.converting', { index: page.index, total: page.total })
       )
     }
+
+    // 必须在这里准备：点击分享时不能再 await 任何东西，否则 iOS 会拒绝
+    state.shareFiles = buildShareFiles(state.results)
 
     renderThumbs()
     renderDoneStep()
@@ -242,14 +254,19 @@ function resetResults() {
   for (const url of state.thumbUrls) URL.revokeObjectURL(url)
   state.thumbUrls = []
   state.results = []
-  state.clampedCount = 0
+  state.shareFiles = []
   $('thumbs').replaceChildren()
   $('clamped-note').hidden = true
+  $('thumbs-note').hidden = true
+  $('share').hidden = true
+  $('share-note').hidden = true
 }
 
 function renderThumbs() {
+  const plan = planThumbnails(state.results.length, MAX_THUMBS)
+
   const fragment = document.createDocumentFragment()
-  for (const result of state.results.slice(0, MAX_THUMBS)) {
+  for (const result of state.results.slice(0, plan.shown)) {
     const url = URL.createObjectURL(result.blob)
     state.thumbUrls.push(url)
 
@@ -261,6 +278,24 @@ function renderThumbs() {
     fragment.append(img)
   }
   $('thumbs').replaceChildren(fragment)
+  renderThumbsNote(plan)
+}
+
+/**
+ * 预览有上限，但账必须让用户看得懂：
+ * 13 页只看到 12 张缩略图，不说明的话会被当成丢了一页。
+ */
+function renderThumbsNote(plan = planThumbnails(state.results.length, MAX_THUMBS)) {
+  const note = $('thumbs-note')
+  if (!plan.hasMore) {
+    note.hidden = true
+    return
+  }
+  note.textContent = t(state.lang, 'progress.showingSome', {
+    shown: plan.shown,
+    total: state.results.length,
+  })
+  note.hidden = false
 }
 
 function renderDoneStep() {
@@ -274,13 +309,65 @@ function renderDoneStep() {
     ? t(state.lang, 'action.downloadZip', { n: count })
     : t(state.lang, 'action.download')
 
+  const clamped = summarizeClamped(state.results)
   const note = $('clamped-note')
-  if (state.clampedCount > 0) {
-    note.textContent = t(state.lang, 'progress.clampedNotice', { n: state.clampedCount })
+  if (clamped.count > 0) {
+    note.textContent = t(
+      state.lang,
+      clamped.mixed ? 'progress.clampedNoticeMixed' : 'progress.clampedNotice',
+      { n: clamped.count, width: clamped.width, height: clamped.height }
+    )
     note.hidden = false
   } else {
     note.hidden = true
   }
+
+  renderThumbsNote()
+  renderShareControls()
+}
+
+/**
+ * 分享按钮只在真的能用时出现：
+ * 设备支持分享文件，且张数没超过上限。超了就只留 ZIP，并说明原因 —— 不静默消失。
+ */
+function renderShareControls() {
+  const count = state.results.length
+  const button = $('share')
+  const note = $('share-note')
+
+  const deviceCanShare = canShareFiles(state.shareFiles)
+  if (!deviceCanShare) {
+    // 这台设备根本不支持分享文件，说了也没用，安静地只给下载
+    button.hidden = true
+    note.hidden = true
+    return
+  }
+
+  if (withinShareLimit(count, SHARE_FILE_LIMIT)) {
+    button.hidden = false
+    button.disabled = false
+    note.hidden = true
+  } else {
+    button.hidden = true
+    note.textContent = t(state.lang, 'share.tooMany', { limit: SHARE_FILE_LIMIT })
+    note.hidden = false
+  }
+}
+
+/**
+ * 分享。这个函数不能是 async，也不能在调用 navigator.share 之前 await 任何东西 ——
+ * iOS 要求 share() 发生在用户手势的同一个事件循环里。文件在转换结束时就备好了。
+ */
+function share() {
+  if (state.shareFiles.length === 0) return
+
+  shareFiles(state.shareFiles, { title: state.file?.name }).then((outcome) => {
+    if (outcome === 'failed') {
+      $('share-note').textContent = t(state.lang, 'share.failed')
+      $('share-note').hidden = false
+    }
+    // 'cancelled' 是用户自己点的取消，静默处理，不打扰
+  })
 }
 
 async function download() {
@@ -361,6 +448,7 @@ function wireEvents() {
   $('convert').addEventListener('click', convert)
   $('cancel').addEventListener('click', () => state.controller?.abort())
   $('download').addEventListener('click', download)
+  $('share').addEventListener('click', share)
   $('again').addEventListener('click', startOver)
   $('error-dismiss').addEventListener('click', () => {
     $('error-panel').hidden = true
@@ -387,6 +475,15 @@ const support = detectSupport()
 if (support.supported) {
   $('app').hidden = false
   showStep('step-pick')
+
+  // 页面空闲时先把 pdf.js 拉下来，省掉用户点「开始转换」后的那段等待。
+  // 失败无所谓 —— 真正的错误处理在转换流程里。
+  const warmUp = () => preloadEngine()
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(warmUp, { timeout: 3000 })
+  } else {
+    setTimeout(warmUp, 1200) // Safari 还没有 requestIdleCallback
+  }
 } else {
   // 第一道防线：连 pdf.js 都不加载
   showUnsupported(support)

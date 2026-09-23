@@ -9,6 +9,9 @@
   --accent-fg: #ffffff;
   --warn: #b4531f;
   --rule: #e2e2dd;
+  /* 控件边界专用：WCAG 1.4.11 要求非文字界面组件对背景 >= 3:1。
+     --rule 只有 1.26:1，够做分隔线，但做按钮边框会让按钮"看不出是按钮"。 */
+  --border-strong: #86867f;
   --radius: 8px;
   --touch: 44px; /* 触控目标下限 */
   color-scheme: light dark;
@@ -24,6 +27,7 @@
     --accent-fg: #14241b;
     --warn: #e2915f;
     --rule: #2e2e33;
+    --border-strong: #707078;
   }
 }
 
@@ -73,7 +77,7 @@ body {
 .lang-toggle {
   min-height: var(--touch);
   padding: 0 0.9rem;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--fg);
@@ -252,7 +256,7 @@ body {
   width: 100%;
   min-height: var(--touch);
   padding: 0.5rem 0.7rem;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--fg);
@@ -298,7 +302,7 @@ output {
   align-items: center;
   justify-content: center;
   min-height: var(--touch);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--bg);
   font-variant-numeric: tabular-nums;
@@ -325,7 +329,7 @@ output {
   justify-content: center;
   min-height: var(--touch);
   padding: 0.6rem 1.2rem;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--fg);
@@ -351,7 +355,10 @@ output {
 
 .btn-quiet {
   background: transparent;
-  color: var(--muted);
+  /* 文字用 --fg 而不是 --muted：--muted 虽然也过 AA，
+     但"次要按钮"不该靠降低可读性来表达次要，靠的是没有填充色 */
+  color: var(--fg);
+  border-color: var(--border-strong);
 }
 
 .btn-block {

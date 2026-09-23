@@ -50,6 +50,21 @@ async function loadPdfjs() {
   }
 }
 
+/**
+ * 后台预热 pdf.js。
+ *
+ * 首次转换要先下载约 500 KB 的 pdf.js 和 2.4 MB 的 worker；等用户选好文件再开始下载，
+ * 那段等待全落在用户眼前。页面空闲时先拉下来，点「开始转换」时通常已经就绪。
+ *
+ * 失败不抛异常 —— 预加载只是优化，真正的错误处理在 convertPdfToJpegs 里。
+ */
+export function preloadEngine() {
+  return loadPdfjs().then(
+    () => true,
+    () => false
+  )
+}
+
 function throwIfAborted(signal) {
   if (signal?.aborted) throw new EngineError(CODES.CANCELLED)
 }
@@ -96,6 +111,9 @@ function translateOpenError(err) {
  *   total      = 本次要转换的页数，用于进度显示（第 index / total 页）
  *   totalPages = 文档的总页数，用于决定文件名补零位数 —— 两者不是一回事：
  *                50 页文档里只选 4 页，文件名仍应是 _p01 而不是 _p1
+ *   source     = 这一页在 scale=1 时的尺寸（已含 PDF 的 userUnit）与请求的缩放比例，
+ *                用来回答「为什么这一页被降采样了」——普通 A4 在 150 DPI 下不该触发，
+ *                真触发了就说明页面本身很大，或者 userUnit 不是 1
  */
 export async function* convertPdfToJpegs(source, options = {}, { signal } = {}) {
   const { dpi, quality, pageRange, password, maxPixels } = { ...DEFAULT_OPTIONS, ...options }
@@ -118,6 +136,10 @@ export async function* convertPdfToJpegs(source, options = {}, { signal } = {}) 
     data,
     password,
     isEvalSupported: false, // 与阶段 4 的 CSP 不冲突（KICKOFF §4）
+    // pdf.js 6 用 WebAssembly 解码 JPEG2000 等图像。不指定路径时它会去
+    // 默认的相对位置找，在 base 不是 / 的站点上会 404，表现为某些页面空白。
+    // 这些 .wasm 随站点一起打包，仍是同源请求（约束 C1）。
+    wasmUrl: `${import.meta.env.BASE_URL}pdfjs/wasm/`,
   })
 
   let doc
@@ -150,7 +172,7 @@ export async function* convertPdfToJpegs(source, options = {}, { signal } = {}) 
 
       try {
         const base = page.getViewport({ scale: 1 })
-        const { scale, clamped, width, height } = computeRenderScale({
+        const { scale, requestedScale, clamped, width, height } = computeRenderScale({
           widthPt: base.width,
           heightPt: base.height,
           dpi,
@@ -186,7 +208,24 @@ export async function* convertPdfToJpegs(source, options = {}, { signal } = {}) 
         const blob = await canvasToJpegBlob(canvas, quality)
         throwIfAborted(signal)
 
-        yield { pageNumber, blob, width, height, clamped, index, total, totalPages }
+        yield {
+          pageNumber,
+          blob,
+          width,
+          height,
+          clamped,
+          index,
+          total,
+          totalPages,
+          source: {
+            widthPt: base.width,
+            heightPt: base.height,
+            requestedScale,
+            requestedWidth: Math.floor(base.width * requestedScale),
+            requestedHeight: Math.floor(base.height * requestedScale),
+            maxPixels,
+          },
+        }
       } finally {
         if (onAbort) signal.removeEventListener('abort', onAbort)
         if (canvas) {

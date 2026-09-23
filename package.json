@@ -9,12 +9,15 @@
     "node": ">=20.19.0"
   },
   "scripts": {
-    "dev": "vite",
+    "assets": "node scripts/copy-pdfjs-assets.js",
     "build": "vite build",
+    "dev": "vite",
+    "fixtures": "node scripts/make-fixtures.js",
+    "prebuild": "node scripts/copy-pdfjs-assets.js",
+    "predev": "node scripts/copy-pdfjs-assets.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "fixtures": "node scripts/make-fixtures.js"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "pdf-lib": "1.17.1",

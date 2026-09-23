@@ -71,6 +71,7 @@ export const TEXT = {
       cancel: '取消',
       download: '下载 JPG',
       downloadZip: '下载 ZIP（{n} 张）',
+      share: '分享 / 存到相册',
       again: '再转一个',
     },
     progress: {
@@ -79,9 +80,16 @@ export const TEXT = {
       packing: '正在打包 ZIP…',
       done: '完成：{n} 张图片',
       doneSingle: '完成：1 张图片',
+      showingSome: '下面只显示前 {shown} 张预览，全部 {total} 张都在 ZIP 里。',
       cancelled: '已取消。已完成的页面没有下载。',
       clampedNotice:
-        '有 {n} 页超出浏览器的画布上限，已自动降低分辨率。这是浏览器的限制，不是文件的问题。',
+        '有 {n} 页超出浏览器的画布上限，已自动降低分辨率，输出为 {width}×{height} 像素。这是浏览器的限制，不是文件的问题。',
+      clampedNoticeMixed:
+        '有 {n} 页超出浏览器的画布上限，已自动降低分辨率，输出最大 {width}×{height} 像素。这是浏览器的限制，不是文件的问题。',
+    },
+    share: {
+      tooMany: '超过 {limit} 张时不提供分享：系统的分享面板一次接受不了这么多文件。请用上面的 ZIP 下载。',
+      failed: '分享没能完成。你仍然可以直接下载。',
     },
     errors: {
       title: '出错了',
@@ -170,6 +178,7 @@ export const TEXT = {
       cancel: 'Cancel',
       download: 'Download JPG',
       downloadZip: 'Download ZIP ({n} images)',
+      share: 'Share / Save to Photos',
       again: 'Convert another',
     },
     progress: {
@@ -178,9 +187,17 @@ export const TEXT = {
       packing: 'Building the ZIP…',
       done: 'Done — {n} images',
       doneSingle: 'Done — 1 image',
+      showingSome: 'Previewing the first {shown} below. All {total} are in the ZIP.',
       cancelled: 'Cancelled. Nothing was downloaded.',
       clampedNotice:
-        '{n} pages exceeded your browser’s canvas limit and were rendered at a lower resolution. That is a browser limit, not a problem with your file.',
+        '{n} pages exceeded your browser’s canvas limit and were rendered at {width}×{height} pixels instead. That is a browser limit, not a problem with your file.',
+      clampedNoticeMixed:
+        '{n} pages exceeded your browser’s canvas limit and were rendered smaller, at up to {width}×{height} pixels. That is a browser limit, not a problem with your file.',
+    },
+    share: {
+      tooMany:
+        'Sharing is off above {limit} images — the system share sheet cannot take that many files at once. Use the ZIP download above.',
+      failed: 'Sharing did not go through. You can still download instead.',
     },
     errors: {
       title: 'Something went wrong',

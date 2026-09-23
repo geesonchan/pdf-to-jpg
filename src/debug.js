@@ -82,6 +82,7 @@ async function run() {
   const started = performance.now()
   let count = 0
   let file = { name: 'document.pdf' }
+  const diagnostics = []
 
   try {
     const source = await pickSource()
@@ -105,6 +106,19 @@ async function run() {
         `第 ${page.index} / ${page.total} 页 · ${page.width}×${page.height}` +
           (page.clamped ? ' · 已自动降采样' : '')
       )
+
+      // 诊断表：回答「这一页为什么被降采样」
+      const s = page.source
+      diagnostics.push({
+        页: page.pageNumber,
+        '页面尺寸(点)': `${s.widthPt.toFixed(1)} × ${s.heightPt.toFixed(1)}`,
+        DPI: Math.round(s.requestedScale * 72),
+        '请求缩放': s.requestedScale.toFixed(4),
+        '原始像素': `${s.requestedWidth}×${s.requestedHeight} = ${(s.requestedWidth * s.requestedHeight / 1e6).toFixed(2)}M`,
+        '上限': `${(s.maxPixels / 1e6).toFixed(2)}M`,
+        '实际输出': `${page.width}×${page.height}`,
+        '是否降采样': page.clamped ? '是' : '否',
+      })
 
       const name = makePageFilename(file.name, page.pageNumber, page.totalPages)
       const url = URL.createObjectURL(page.blob)
@@ -133,6 +147,15 @@ async function run() {
 
     const ms = Math.round(performance.now() - started)
     setStatus(`完成：${count} 页，用时 ${ms} ms。`)
+    console.table(diagnostics)
+    const clamped = diagnostics.filter((d) => d['是否降采样'] === '是')
+    if (clamped.length) {
+      console.warn(
+        `${clamped.length} / ${diagnostics.length} 页被降采样。` +
+          `第一页尺寸 ${clamped[0]['页面尺寸(点)']} 点，${clamped[0].DPI} DPI，` +
+          `原始 ${clamped[0]['原始像素']}，输出 ${clamped[0]['实际输出']}。`
+      )
+    }
   } catch (err) {
     if (err instanceof EngineError && err.code === 'CANCELLED') {
       setStatus(`已取消（已产出 ${count} 页，未触发下载）。`)

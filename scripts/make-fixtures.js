@@ -86,6 +86,12 @@ const FIXTURES = [
     why: '验收：50 页 → ZIP 内 50 张，命名 _p01 … _p50',
   },
   {
+    name: 'thirteen-pages.pdf',
+    build: () =>
+      buildSimple({ name: 'thirteen-pages.pdf', label: 'Thirteen pages', size: A4, pages: 13 }),
+    why: '页数跨过缩略图上限（12）的边界，用来守住「缩略图数 / ZIP 条目数 / 提示数字」三者一致',
+  },
+  {
     name: 'landscape.pdf',
     build: () =>
       buildSimple({ name: 'landscape.pdf', label: 'Landscape', size: A4_LANDSCAPE, pages: 3 }),

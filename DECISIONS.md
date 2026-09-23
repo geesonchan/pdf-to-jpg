@@ -61,38 +61,77 @@
 
 ---
 
-## 四、pdfjs-dist 标准版 vs legacy 兼容版（待 Leo 决定）
+## 四、pdfjs-dist 标准版 vs legacy 兼容版
 
-调研结论见下方「阶段 1 调研记录」。选定后在此补写 D21。
+| ID | 决策 | 放弃的选项 | 理由 | 反悔成本 |
+|---|---|---|---|---|
+| D21 | 用 **legacy** 构建（`pdfjs-dist/legacy/build/`） | 标准版 `build/` | 标准版直接调用 `Math.sumPrecise`（16 处，无回退），实际要求 iOS 26.2+ / Chrome 147+ / Firefox 137+；legacy 用 core-js 补上该 API，下限降到 iOS 17.4 / Chrome 119 / Firefox 121。多出的 35.6 KB gzip 换来的是从 iOS 17.4 到 26.1 的全部用户 | **中**：改两处 import 路径 + 重测兼容性 |
 
-### 阶段 1 调研记录（2026-09-22，基于 pdfjs-dist 6.3.289 实测）
+### 放弃的用户范围
 
-**一个反直觉的事实：legacy 版并不转译语法。** 对比两个产物，私有字段 `#x`（2761 处）、`class`、`async`、箭头函数在两版中**逐字相同**，行号只是被约 6281 行的 core-js 序幕整体下推。legacy 加的是**运行时 API 的 polyfill**，不是语法降级。
+选 legacy 之后仍然覆盖不到的人：
 
-用 pdf.js 自己的 `ENV_TARGETS`（`gulpfile.mjs:93`）解析 browserslist，最低档位是：
+- **iOS 17.3 及以下**。硬件上限在这条线以下的机型（iPhone X / 8 及更早最高只能到 iOS 16）无论如何都救不回来——它们连 legacy 版也跑不起来。
+- **Safari 17.3 及以下的桌面 Mac**，包括停留在 macOS Monterey 的机器。
+- **Chrome 118 及以下 / Firefox 120 及以下**。
+- 卡住这条线的是 `Promise.withResolvers`（pdf.js 用了 41 处，core-js 未补）。
 
-```
-ios_saf 18.5-18.7 / safari 18.0
-```
+这些用户看到的是双语「浏览器不支持」提示，不是白屏 —— 提示按平台区分（iOS 只说升级系统，因为 iOS 上所有浏览器都是同一个 WebKit 引擎，换浏览器无效）。
 
-两版实际的浏览器下限：
+### 重新评估的触发条件
 
-| | 卡住下限的原因 | 实际最低 iOS Safari |
+出现以下任一情况，就回到这张表重新算账：
+
+1. **收到「已经是最新版仍看到不支持提示」的反馈**（提示里的 GitHub Issues 链接就是为此准备的）。这说明探测表和真实浏览器脱节了。
+2. **升级 pdfjs-dist**。新版本可能改用别的新 API，下限会变 —— 核对步骤见 CLAUDE.md 工作规则第 8 条。
+3. **`Promise.withResolvers` 的支持面变成事实上的全覆盖**，那时 legacy 的额外体积就不再值得，可以考虑换回标准版。
+4. **体积成为实际问题**（例如要支持慢速网络场景）。
+
+---
+
+## 五、一次数据更正的经过（2026-09-22）
+
+留档，因为这次差点做出错误决策。
+
+**最初的判断（错的）**：我读了 pdf.js 的 `gulpfile.mjs:93`，看到 `ENV_TARGETS` 里写着 `Safari >= 18`，又用 browserslist 解析出最低档位是 `ios_saf 18.5-18.7`，于是得出「标准版最低 iOS 18.4」。基于这个数字，我给出的推荐是**标准版**，理由是「legacy 多花的 35.6 KB 只买到 iOS 17.4–18.3 这一小段用户」。Leo 据此选了标准版。
+
+**怎么发现错的**：准备写「请升级 iOS 到 18.4」这句提示文案时，意识到这个版本号要写死在用户界面里，不能靠推断。于是去核实 `Math.sumPrecise` 的真实支持起点。
+
+**更正后的数据从哪来**：用 MDN 的 `@mdn/browser-compat-data`（装在临时目录，未进项目）直接查。结果是 `Math.sumPrecise` 的支持起点为 **Safari / iOS 26.2、Chrome 147、Firefox 137**，不是 18.4。随后在产物里逐条验证：
+
+| 验证项 | 方法 | 结果 |
 |---|---|---|
-| 标准版 `build/` | 直接调用 `Math.sumPrecise`（6 处真实用法）、假定 `Iterator` 全局存在，均无回退 | **18.4** |
-| legacy 版 `legacy/build/` | core-js 补上了 Iterator helpers 与 `Math.sumPrecise`；但**没有**补 `Promise.withResolvers`（代码里 41 处、无回退） | **17.4** |
+| 标准版是否真的调用它 | `grep -n sumPrecise build/pdf.mjs build/pdf.worker.mjs` | 16 处，全是调用点 |
+| 标准版是否自带 polyfill | `grep -nE "sumPrecise:\s*function\|target: 'Math'"` | 无 |
+| legacy 是否补了它 | 同样的 grep | 有，`legacy/build/pdf.worker.mjs:4797` 处 core-js 的 `$({ target: 'Math', stat: true }, { sumPrecise })` |
+| legacy 是否补了 `Promise.withResolvers` | 检查所有 `target: 'Promise'` 注册 | 没有，那处注册的是 `Promise.try` |
 
-体积代价（minify + gzip，主包 + worker 合计）：
+**教训**：pdf.js 自己声明的 `ENV_TARGETS` 与它实际产出的代码不一致 —— 声明 `Safari >= 18`，实际却调用了需要 Safari 26.2 的 API。**以产物代码为准，不以项目声明为准。** 凡是要写进用户界面的版本号，一律用 MDN 兼容性数据核实，并在产物里验证该 API 有没有 polyfill。
+
+---
+
+## 六、pdfjs-dist 兼容性调研记录（基于 6.3.289 实测，已按第五节更正）
+
+**一个反直觉的事实：legacy 版并不转译语法。** 对比两个产物，私有字段 `#x`（2761 处）、`class`、`async`、箭头函数在两版中**逐字相同**，行号只是被约 6281 行的 core-js 序幕整体下推。legacy 加的是**运行时 API 的 polyfill**，不是语法降级。所以「legacy = 支持老浏览器」这个直觉是错的：它只把**库函数**的下限往下拉，语法下限两版一样。
+
+### 两版的实际浏览器下限
+
+| | 卡住下限的 API | 最低 iOS Safari | 最低 Chrome | 最低 Firefox |
+|---|---|---|---|---|
+| 标准版 `build/` | `Math.sumPrecise`（16 处调用，无 polyfill） | **26.2** | 147 | 137 |
+| legacy `legacy/build/` | `Promise.withResolvers`（41 处调用，core-js 未补） | **17.4** | 119 | 121 |
+
+版本号来自 MDN `@mdn/browser-compat-data`；调用点与 polyfill 的有无由 grep 产物逐条验证（方法见第五节的表）。
+
+> ⚠️ pdf.js 自己的 `ENV_TARGETS`（`gulpfile.mjs:93`）声明 `Safari >= 18`，browserslist 解析出 `ios_saf 18.5-18.7`。**这个声明与它实际产出的代码不符**，不要拿它当依据。
+
+### 体积代价（minify + gzip，主包 + worker 合计）
 
 | | 主包 | worker | 合计 | 相对标准版 |
 |---|---|---|---|---|
-| 标准版 | 128.1 KB | 364.8 KB | **492.9 KB** | — |
+| 标准版 | 128.1 KB | 364.8 KB | 492.9 KB | — |
 | legacy | 147.1 KB | 381.4 KB | **528.5 KB** | **+35.6 KB（+7.2%）** |
 
-另需随产物打包（两版相同）：`cmaps/` 1.6 MB、`standard_fonts/` 816 KB、`wasm/` 1.5 MB、`iccs/` 20 KB。
+另需随产物打包（两版相同）：`cmaps/` 1.6 MB、`standard_fonts/` 816 KB、`wasm/` 1.5 MB、`iccs/` 20 KB。这几项由阶段 3 接入。
 
-**关键判断：legacy 多花的 35.6 KB 只买到 iOS 17.4–18.3 这一段用户。** 真正的老设备一个也救不到——iPhone X / 8 及更早机型最高停在 iOS 16，两个版本都跑不起来。而 17.4–18.3 的用户是「能升级但没升」，不是「升不动」。
-
-反过来，桌面端有一段不同的账：macOS Monterey 的 Safari 停在 17.x，那些 Mac 本身无法升级系统。这部分用户只有 legacy 版能覆盖。
-
-> ⚠️ 上述下限是从产物代码与 polyfill 覆盖面推断的，**没有在真实旧设备上验证过**。若选 legacy，阶段 3 应找一台 iOS 17 设备或模拟器实测；若选标准版，则需要一个明确的「浏览器不支持」提示路径。
+> ⚠️ 上述下限是从产物代码与 polyfill 覆盖面推断的，**没有在真实旧设备上验证过**。阶段 3 应找一台 iOS 17 设备或模拟器实测，确认 legacy 版确实能跑。

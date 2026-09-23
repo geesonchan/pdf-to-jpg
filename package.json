@@ -12,7 +12,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fixtures": "node scripts/make-fixtures.js"
   },
   "devDependencies": {
     "pdf-lib": "1.17.1",

@@ -21,18 +21,28 @@
 
 ---
 
-## [ ] 阶段 1：转换引擎（不做界面）
+## [~] 阶段 1：转换引擎（不做界面）
 
-- `src/engine/` 模块：输入 ArrayBuffer + 选项，逐页产出 `{ 页码, Blob }`；支持用 AbortSignal 取消
-- 纯逻辑拆成独立函数并写单元测试：
-  - 页码范围解析
-  - 文件名生成
-  - 像素上限下的缩放比例计算
-- `scripts/make-fixtures.js`：用 pdf-lib 生成测试 PDF —— 1 页、50 页、横向、超大页面（A0）、无背景（透明）
+- [x] `src/engine/convert.js`：输入 ArrayBuffer + 选项，逐页产出 `{ pageNumber, blob }`；AbortSignal 取消
+- [x] 纯逻辑拆成独立函数并写单元测试：
+  - [x] 页码范围解析 `pageRange.js`（含全角输入归一化）
+  - [x] 文件名生成 `filename.js`
+  - [x] 像素上限下的缩放比例计算 `scale.js`
+- [x] `scripts/make-fixtures.js`：1 页、50 页、横向、A0 超大、无背景（透明）
+- [x] 移除 `--passWithNoTests`（D12 到期）
+- [x] 依赖锁定精确版本 + 许可证台账 + pdf-lib 仅开发依赖的 CI 守卫
+- [x] 选定 pdfjs-dist **legacy** 构建（D21）
+- [x] 浏览器支持探测 `support.js` + 双语不支持文案 `i18n/unsupported.js`（按 iOS / 桌面区分，含反馈链接）
+- [x] 两道防线：特性探测 + pdf.js/worker 加载异常捕获，统一归到同一个提示出口
+- [x] 临时调试页 `debug.html`（仅 dev，不进生产构建）
 
-- 写出第一个测试文件后，从 `package.json` 的 test 脚本移除 `--passWithNoTests`（D12 到期）
+**验收**：`npm test` 全绿（102 个）；调试页能转出 JPG。
 
-**验收**：`npm test` 全绿；临时调试页面能转出 1 张 JPG。
+**留到后续阶段**（本阶段不做）：
+- 不支持提示接入正式界面 —— 阶段 2（现在只在调试页展示）
+- `cmaps/` `standard_fonts/` 复制进产物（中日韩字体）—— 阶段 3
+- 真实 iOS 17 设备验证 legacy 版 —— 阶段 3
+- 加密 PDF 的密码输入框、ZIP 打包、200 页警告 —— 阶段 2 / 3
 
 ---
 

@@ -38,6 +38,17 @@
    - ❌ `files=$(find ...)` 然后 `grep PATTERN $files`
    - ✅ `grep -r --include='*.html' PATTERN dist/`，或 `find ... -exec grep PATTERN {} +`
    - 任何检查类脚本，都要同时验证「该报红时确实报红」和「该忽略时确实忽略」，不能只看到绿就当通过。
+8. **升级 pdfjs-dist 时，必须重新核对特性探测表**（`src/engine/support.js`）。
+   我们用的是 legacy 构建：它给部分新 API 打了 core-js polyfill，探测表里**只能放 legacy 没补的 API**。
+   放多了会把可用的浏览器误判为不支持，放少了会让用户白屏。核对步骤：
+   1. 查新版产物里有哪些无回退的新 API：
+      `grep -nE "Math\.[a-z]|Promise\.[a-z]|Iterator\." node_modules/pdfjs-dist/legacy/build/pdf*.mjs`
+   2. 对每个可疑 API，确认 legacy 是否自带 polyfill：搜 `target: 'Math'` / `target: 'Promise'` 这类 core-js 注册。
+      **没搜到 polyfill 的，才进探测表。**
+   3. 用 MDN 的 `@mdn/browser-compat-data` 查它的真实支持起点，**不要凭 pdf.js 自己声明的 `ENV_TARGETS` 推断** ——
+      6.3.289 声明 `Safari >= 18`，实际却调用了需要 Safari 26.2 的 API（经过见 DECISIONS.md 第五节）。
+   4. 更新 `CHECKED_AGAINST_PDFJS`、`MIN_IOS_VERSION` 与 `src/i18n/unsupported.js` 里的版本号，跑 `npm test`。
+9. **凡是要显示给用户的浏览器/系统版本号，一律用 MDN 兼容性数据核实**，不得凭记忆或推断写死。
 
 ---
 

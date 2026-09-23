@@ -6,7 +6,7 @@
 
 ---
 
-## [~] 阶段 0：脚手架
+## [x] 阶段 0：脚手架
 
 - [x] 项目真相文件：`CLAUDE.md` `PLAN.md` `DECISIONS.md` `HANDOFF.md`
 - [x] Vite 项目初始化（原生 JS，无框架）
@@ -15,9 +15,9 @@
 - [x] `.gitignore`（含 `fixtures/manual/`）
 - [x] `vite.config.js` 中 `base` = `/pdf-to-jpg/`
 - [x] GitHub Actions 流水线：测试 → 构建 → 发布到 GitHub Pages
-- [ ] 推送到远程仓库，Pages 的 Source 设为 GitHub Actions
+- [x] 推送到远程仓库，Pages 的 Source 设为 GitHub Actions
 
-**验收**：线上地址 `https://geesonchan.github.io/pdf-to-jpg/` 显示占位页；流水线全绿。
+**验收**：✅ 已通过（2026-09-22）。线上地址显示占位页，CI & Deploy #1 全绿，网络面板仅 3 个同源请求。
 
 ---
 

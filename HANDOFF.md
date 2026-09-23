@@ -38,9 +38,16 @@
 6. `PLAN.md` 阶段 3 补：`fixtures/manual/` 不存在或为空时，相关测试自动跳过而不是失败
 7. 已确认 CI 用 `npm ci`（`deploy.yml:33`），`package-lock.json` 已入库
 
-### 卡在哪里 / 需要 Leo 做的事
+### 发布结果（阶段 0 验收通过）
 
-- 推送后，在仓库 **Settings → Pages → Source 选 "GitHub Actions"**（不是 Deploy from a branch），否则 deploy 步骤会失败。
+- 提交 `ef3efa1` 已推送到 `origin/main`
+- CI & Deploy 第 1 次运行 conclusion = `success`，`test-and-build` 与 `deploy` 两个 job 均通过（deploy 成功即说明 Pages Source 已是 GitHub Actions）
+- 线上 <https://geesonchan.github.io/pdf-to-jpg/> 正常渲染，页脚版本号 v0.1.0
+- 浏览器网络面板：仅 3 个请求，全部同源（HTML / JS / CSS），符合 C1/C4
+
+### 踩坑记录
+
+- **不要把文件名列表塞进 shell 变量再不加引号传给命令**。zsh 不对未加引号的参数做分词，同一段脚本在 zsh 与 bash 下行为不同；CI 的外部 URL 检查最初就因此在本地「假绿」（只警告一句就通过）。已改用 `grep -r --include=...`，并用四种场景（正常 / HTML 注入 / CSS 注入 / JS 字符串）实测过报红与忽略行为。
 
 ### 下一步
 

@@ -53,6 +53,26 @@ jobs:
           fi
           echo "No unexpected external URLs in dist HTML/CSS."
 
+      - name: Assert pdf-lib never ships (D20)
+        run: |
+          node -e "
+            const p = require('./package.json');
+            const dep = (p.dependencies || {})['pdf-lib'];
+            const dev = (p.devDependencies || {})['pdf-lib'];
+            if (dep) { console.error('::error::pdf-lib must not be a runtime dependency'); process.exit(1); }
+            if (!dev) { console.error('::error::pdf-lib must be listed in devDependencies'); process.exit(1); }
+            console.log('pdf-lib is dev-only in package.json:', dev);
+          "
+          if grep -rIn --include='*.js' --include='*.mjs' --include='*.html' 'pdf-lib' src/ index.html ; then
+            echo "::error::Application code imports pdf-lib — it is a dev-only tool."
+            exit 1
+          fi
+          if grep -rIn 'pdf-lib' dist/ ; then
+            echo "::error::pdf-lib traces found in dist/ — it must never ship."
+            exit 1
+          fi
+          echo "pdf-lib is dev-only and absent from dist/."
+
       - name: Upload Pages artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3

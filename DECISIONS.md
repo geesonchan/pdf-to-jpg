@@ -34,6 +34,10 @@
 | D14 | 占位页文案暂时内联在 `src/main.js` | 阶段 2 才建集中的双语字典，现在不提前定结构 | 无 |
 | D15 | `build.assetsInlineLimit: 0` | 禁止 Vite 把小资源内联成 data URI，保证产物里每个资源都是可审计的同源文件 | 无 |
 
+| D18 | 三个新依赖锁定**精确版本号**（不用 `^` / `~`） | pdf.js 的小版本会悄悄抬高浏览器基线——实测 6.3.289 的标准版直接调用 `Math.sumPrecise`、依赖 `Iterator` 全局，这类变化不会体现在版本号语义里。锁死后由人工升级并重跑兼容性测试，不让 `npm i` 在无人察觉时改变支持范围 | 低 |
+| D19 | JSZip 选用 **MIT** | JSZip 是 MIT / GPL-3.0-or-later **双许可**（`package.json` 里写作 `(MIT OR GPL-3.0-or-later)`）。本项目按约束 C3 选用 MIT 一侧，GPL 一侧不适用 | 无 |
+| D20 | pdf-lib 只进 `devDependencies`，并由 CI 守卫 | 它只用于 `scripts/make-fixtures.js` 生成测试 PDF，绝不能进入面向用户的产物。CI 增加一步检查：① `package.json` 里 pdf-lib 必须在 devDependencies 且不在 dependencies；② `src/` 与 `index.html` 不得 import 它；③ `dist/` 里不得出现它的痕迹 | 无 |
+
 ### 署名（Leo 2026-09-22 确认）
 
 - `LICENSE` 版权人：`Copyright (c) 2026 geesonchan`
@@ -43,9 +47,52 @@
 
 ## 三、依赖许可证台账
 
-| 依赖 | 版本 | 许可证 | 用途 | 是否随产物发布 |
-|---|---|---|---|---|
-| vite | ^7 | MIT | 构建工具 | 否（仅开发） |
-| vitest | ^3 | MIT | 单元测试 | 否（仅开发） |
+版本全部锁死（D18）。白名单：MIT / Apache-2.0 / BSD / ISC（约束 C3）。
 
-> 阶段 1 起会加入：pdfjs-dist（Apache-2.0，随产物发布）、jszip（MIT，随产物发布）、pdf-lib（MIT，仅开发）。加入时更新本表。
+| 依赖 | 锁定版本 | 许可证 | 用途 | 随产物发布 |
+|---|---|---|---|---|
+| pdfjs-dist | `6.3.289` | Apache-2.0 | 解析与渲染 PDF 页面 | **是** |
+| jszip | `3.10.2` | **MIT / GPL-3.0-or-later 双许可，本项目选用 MIT** | 多页打包成 ZIP | **是** |
+| pdf-lib | `1.17.1` | MIT | 生成测试用 PDF（`scripts/make-fixtures.js`） | 否（仅开发，CI 守卫，见 D20） |
+| vite | `^7.1.5` | MIT | 构建工具 | 否（仅开发） |
+| vitest | `^3.2.4` | MIT | 单元测试 | 否（仅开发） |
+
+> vite / vitest 仍用 `^`：它们不进产物，也不影响浏览器兼容性基线，浮动升级的收益（安全修复）大于风险。进产物的依赖一律锁死。
+
+---
+
+## 四、pdfjs-dist 标准版 vs legacy 兼容版（待 Leo 决定）
+
+调研结论见下方「阶段 1 调研记录」。选定后在此补写 D21。
+
+### 阶段 1 调研记录（2026-09-22，基于 pdfjs-dist 6.3.289 实测）
+
+**一个反直觉的事实：legacy 版并不转译语法。** 对比两个产物，私有字段 `#x`（2761 处）、`class`、`async`、箭头函数在两版中**逐字相同**，行号只是被约 6281 行的 core-js 序幕整体下推。legacy 加的是**运行时 API 的 polyfill**，不是语法降级。
+
+用 pdf.js 自己的 `ENV_TARGETS`（`gulpfile.mjs:93`）解析 browserslist，最低档位是：
+
+```
+ios_saf 18.5-18.7 / safari 18.0
+```
+
+两版实际的浏览器下限：
+
+| | 卡住下限的原因 | 实际最低 iOS Safari |
+|---|---|---|
+| 标准版 `build/` | 直接调用 `Math.sumPrecise`（6 处真实用法）、假定 `Iterator` 全局存在，均无回退 | **18.4** |
+| legacy 版 `legacy/build/` | core-js 补上了 Iterator helpers 与 `Math.sumPrecise`；但**没有**补 `Promise.withResolvers`（代码里 41 处、无回退） | **17.4** |
+
+体积代价（minify + gzip，主包 + worker 合计）：
+
+| | 主包 | worker | 合计 | 相对标准版 |
+|---|---|---|---|---|
+| 标准版 | 128.1 KB | 364.8 KB | **492.9 KB** | — |
+| legacy | 147.1 KB | 381.4 KB | **528.5 KB** | **+35.6 KB（+7.2%）** |
+
+另需随产物打包（两版相同）：`cmaps/` 1.6 MB、`standard_fonts/` 816 KB、`wasm/` 1.5 MB、`iccs/` 20 KB。
+
+**关键判断：legacy 多花的 35.6 KB 只买到 iOS 17.4–18.3 这一段用户。** 真正的老设备一个也救不到——iPhone X / 8 及更早机型最高停在 iOS 16，两个版本都跑不起来。而 17.4–18.3 的用户是「能升级但没升」，不是「升不动」。
+
+反过来，桌面端有一段不同的账：macOS Monterey 的 Safari 停在 17.x，那些 Mac 本身无法升级系统。这部分用户只有 legacy 版能覆盖。
+
+> ⚠️ 上述下限是从产物代码与 polyfill 覆盖面推断的，**没有在真实旧设备上验证过**。若选 legacy，阶段 3 应找一台 iOS 17 设备或模拟器实测；若选标准版，则需要一个明确的「浏览器不支持」提示路径。

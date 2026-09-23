@@ -14,7 +14,7 @@ import { convertPdfToJpegs } from './engine/convert.js'
 import { EngineError, isBrowserLevelFailure } from './engine/errors.js'
 import { makePageFilename } from './engine/filename.js'
 import { detectSupport } from './engine/support.js'
-import { unsupportedText } from './i18n/unsupported.js'
+import { unsupportedText } from './i18n/dict.js'
 
 const $ = (id) => document.getElementById(id)
 const lang = navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'

@@ -1,33 +1,136 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>PDF → JPG</title>
-    <meta name="description" content="把 PDF 每一页转成 JPG 图片，全部在你的浏览器里完成，文件不会上传。Convert each PDF page to a JPG image, entirely in your browser. Files never leave your device." />
+    <title>PDF to JPG · Free, no uploads</title>
+    <meta
+      name="description"
+      content="Turn every page of a PDF into a JPG image. Everything runs in your browser; your files are never uploaded."
+    />
     <link rel="icon" href="data:," />
   </head>
   <body>
-    <main class="page">
-      <h1>PDF → JPG</h1>
+    <div class="shell">
+      <header class="topbar">
+        <h1 data-i18n="app.title">PDF → JPG</h1>
+        <button id="lang-toggle" class="lang-toggle" type="button" data-i18n="meta.switchTo">
+          中文
+        </button>
+      </header>
 
-      <p class="lead" data-i18n="tagline"></p>
+      <main class="page">
+        <p class="lead" data-i18n="app.tagline"></p>
+        <p class="privacy" data-i18n="app.privacy"></p>
 
-      <p class="privacy" data-i18n="privacy"></p>
+        <!-- 浏览器不支持：出现时会把下面的功能区整块藏起来 -->
+        <section id="unsupported" class="panel panel-warn" hidden>
+          <h2 id="unsupported-title"></h2>
+          <p id="unsupported-body"></p>
+          <p class="muted" id="unsupported-note"></p>
+          <p class="muted" id="unsupported-privacy"></p>
+          <p><a id="unsupported-feedback" rel="noopener" href="#"></a></p>
+          <p class="muted tiny" id="unsupported-missing"></p>
+        </section>
 
-      <section class="status">
-        <h2 data-i18n="statusTitle"></h2>
-        <p data-i18n="statusBody"></p>
-      </section>
-    </main>
+        <div id="app" hidden>
+          <!-- 第 1 步：选文件 -->
+          <section id="step-pick">
+            <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-hint">
+              <p class="dropzone-label" data-i18n="drop.label"></p>
+              <p class="dropzone-or muted" data-i18n="drop.or"></p>
+              <span class="btn btn-primary" id="pick-button" data-i18n="drop.button"></span>
+              <p class="muted tiny" id="drop-hint" data-i18n="drop.hint"></p>
+              <input id="file-input" type="file" accept="application/pdf,.pdf" hidden />
+            </div>
+          </section>
 
-    <footer class="footer">
-      <span data-i18n="footerPrivacy"></span>
-      <span class="sep">·</span>
-      <a href="https://github.com/geesonchan/pdf-to-jpg" rel="noopener">GitHub</a>
-      <span class="sep">·</span>
-      <span id="version"></span>
-    </footer>
+          <!-- 第 2 步：设置并转换 -->
+          <section id="step-configure" hidden>
+            <div class="filecard">
+              <div class="filecard-main">
+                <strong id="file-name"></strong>
+                <span class="muted tiny" id="file-meta"></span>
+              </div>
+              <button id="change-file" class="btn btn-quiet" type="button" data-i18n="file.change"></button>
+            </div>
+
+            <fieldset class="settings">
+              <legend data-i18n="settings.title"></legend>
+
+              <div class="field">
+                <label for="dpi" data-i18n="settings.dpi"></label>
+                <div class="segmented" id="dpi-group" role="radiogroup" aria-labelledby="dpi-label">
+                  <label class="segment">
+                    <input type="radio" name="dpi" value="72" />
+                    <span>72</span>
+                  </label>
+                  <label class="segment">
+                    <input type="radio" name="dpi" value="150" checked />
+                    <span>150</span>
+                  </label>
+                  <label class="segment">
+                    <input type="radio" name="dpi" value="300" />
+                    <span>300</span>
+                  </label>
+                </div>
+                <p class="muted tiny" data-i18n="settings.dpiHint"></p>
+              </div>
+
+              <div class="field">
+                <label for="quality">
+                  <span data-i18n="settings.quality"></span>
+                  <output id="quality-value" for="quality">0.85</output>
+                </label>
+                <input id="quality" type="range" min="0.5" max="0.95" step="0.05" value="0.85" />
+                <p class="muted tiny" data-i18n="settings.qualityHint"></p>
+              </div>
+
+              <div class="field">
+                <label for="range" data-i18n="settings.range"></label>
+                <input id="range" type="text" inputmode="text" autocomplete="off" spellcheck="false" />
+                <p class="muted tiny" data-i18n="settings.rangeHint"></p>
+              </div>
+            </fieldset>
+
+            <button id="convert" class="btn btn-primary btn-block" type="button" data-i18n="action.convert"></button>
+          </section>
+
+          <!-- 第 3 步：进度 -->
+          <section id="step-progress" hidden>
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progressbar">
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p class="status" id="progress-text"></p>
+            <button id="cancel" class="btn btn-block" type="button" data-i18n="action.cancel"></button>
+          </section>
+
+          <!-- 第 4 步：结果 -->
+          <section id="step-done" hidden>
+            <p class="status status-good" id="done-text"></p>
+            <p class="muted tiny" id="clamped-note" hidden></p>
+            <button id="download" class="btn btn-primary btn-block" type="button"></button>
+            <button id="again" class="btn btn-quiet btn-block" type="button" data-i18n="action.again"></button>
+            <div class="thumbs" id="thumbs"></div>
+          </section>
+
+          <!-- 错误 -->
+          <section id="error-panel" class="panel panel-warn" hidden>
+            <h2 data-i18n="errors.title"></h2>
+            <p id="error-text"></p>
+            <button id="error-dismiss" class="btn btn-quiet" type="button" data-i18n="action.again"></button>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <span data-i18n="footer.privacy"></span>
+        <span class="sep">·</span>
+        <a id="source-link" rel="noopener" data-i18n="footer.source"></a>
+        <span class="sep">·</span>
+        <span id="version"></span>
+      </footer>
+    </div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

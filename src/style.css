@@ -1,18 +1,28 @@
+/* ─────────────── 设计令牌 ─────────────── */
+
 :root {
   --bg: #fbfbfa;
+  --surface: #ffffff;
   --fg: #1a1a18;
   --muted: #6b6b66;
   --accent: #1c5d3a;
+  --accent-fg: #ffffff;
+  --warn: #b4531f;
   --rule: #e2e2dd;
+  --radius: 8px;
+  --touch: 44px; /* 触控目标下限 */
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #17171a;
+    --surface: #202024;
     --fg: #ececea;
     --muted: #9b9b96;
     --accent: #7fd1a3;
+    --accent-fg: #14241b;
+    --warn: #e2915f;
     --rule: #2e2e33;
   }
 }
@@ -24,61 +34,388 @@
 body {
   margin: 0;
   min-height: 100svh;
-  display: flex;
-  flex-direction: column;
   background: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', sans-serif;
   line-height: 1.6;
-  /* iPhone 底部安全区 */
+  -webkit-text-size-adjust: 100%;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  /* iPhone 刘海与底部横条 */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
 }
+
+/* ─────────────── 顶栏 ─────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 0;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.1rem);
+  letter-spacing: -0.02em;
+}
+
+.lang-toggle {
+  min-height: var(--touch);
+  padding: 0 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.lang-toggle:hover {
+  border-color: var(--fg);
+}
+
+/* ─────────────── 页面主体 ─────────────── */
 
 .page {
   flex: 1;
   width: 100%;
   max-width: 34rem;
   margin: 0 auto;
-  padding: 3rem 1rem 2rem;
-}
-
-h1 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(2rem, 8vw, 2.75rem);
-  letter-spacing: -0.02em;
+  padding: 0.5rem 1rem 2rem;
 }
 
 .lead {
-  margin: 0 0 1.5rem;
-  font-size: 1.1rem;
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
 }
 
 .privacy {
-  margin: 0 0 2.5rem;
-  padding: 0.75rem 1rem;
+  margin: 0 0 1.75rem;
+  padding: 0.7rem 0.9rem;
   border-left: 3px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   font-weight: 500;
 }
 
-.status h2 {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.muted {
   color: var(--muted);
 }
 
-.status p {
+.tiny {
+  font-size: 0.82rem;
+}
+
+/* ─────────────── 面板 ─────────────── */
+
+.panel {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.panel-warn {
+  border-left: 4px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+}
+
+.panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.panel p {
+  margin: 0 0 0.6rem;
+}
+
+.panel p:last-child {
+  margin-bottom: 0;
+}
+
+#unsupported-missing:empty {
+  display: none;
+}
+
+/* ─────────────── 拖放区 ─────────────── */
+
+.dropzone {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  padding: 2.5rem 1rem;
+  border: 2px dashed var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.dropzone.is-active {
+  border-color: var(--accent);
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.dropzone-label {
   margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.dropzone-or {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* ─────────────── 文件卡片 ─────────────── */
+
+.filecard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.filecard-main {
+  display: grid;
+  min-width: 0;
+}
+
+.filecard-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─────────────── 设置 ─────────────── */
+
+.settings {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.settings legend {
+  padding: 0 0.4rem;
+  font-weight: 600;
+}
+
+.field {
+  margin-bottom: 1.25rem;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+.field p {
+  margin: 0.35rem 0 0;
+}
+
+.field input[type='text'] {
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px; /* 小于 16px 时 iOS Safari 会自动放大页面 */
+}
+
+.field input[type='text']:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.field input[type='range'] {
+  width: 100%;
+  min-height: var(--touch);
+  accent-color: var(--accent);
+}
+
+output {
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
+
+/* 分段控件：DPI 三选一 */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.segment {
+  position: relative;
+}
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segment span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.segment input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.segment input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─────────────── 按钮 ─────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--fg);
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─────────────── 进度 ─────────────── */
+
+.progress {
+  height: 10px;
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.status {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-good {
+  font-weight: 600;
+}
+
+/* ─────────────── 结果缩略图 ─────────────── */
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.thumb {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* ─────────────── 页脚 ─────────────── */
 
 .footer {
-  border-top: 1px solid var(--rule);
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
   padding: 1rem;
+  border-top: 1px solid var(--rule);
   text-align: center;
   font-size: 0.85rem;
   color: var(--muted);
@@ -93,14 +430,20 @@ h1 {
   opacity: 0.5;
 }
 
-/* ── 「浏览器不支持」面板（生产与调试页共用） ── */
+/* ─────────────── 调试页（仅 npm run dev，不进生产构建） ─────────────── */
+
+.hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .support-panel {
   margin: 0 0 2rem;
   padding: 1rem 1.25rem;
   border: 1px solid var(--rule);
-  border-left: 4px solid #b4531f;
-  border-radius: 4px;
-  background: color-mix(in srgb, #b4531f 7%, transparent);
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
 }
 
 .support-panel h2 {
@@ -123,12 +466,6 @@ h1 {
   display: none;
 }
 
-/* ── 调试页（仅 npm run dev，不进生产构建） ── */
-.hint {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
 .controls {
   display: grid;
   gap: 0.75rem;
@@ -143,13 +480,13 @@ h1 {
 
 .controls input,
 .controls select {
+  min-height: var(--touch);
   padding: 0.5rem;
-  font: inherit;
   border: 1px solid var(--rule);
   border-radius: 4px;
   background: var(--bg);
   color: var(--fg);
-  min-height: 44px; /* 触控目标下限 */
+  font: inherit;
 }
 
 .buttons {
@@ -159,26 +496,19 @@ h1 {
 
 .buttons button {
   flex: 1;
-  min-height: 44px;
+  min-height: var(--touch);
   padding: 0.6rem 1rem;
-  font: inherit;
   border: 1px solid var(--rule);
   border-radius: 4px;
   background: var(--fg);
   color: var(--bg);
+  font: inherit;
   cursor: pointer;
 }
 
 .buttons button[disabled] {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.status {
-  padding: 0.6rem 0.8rem;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
-  font-variant-numeric: tabular-nums;
 }
 
 .results {

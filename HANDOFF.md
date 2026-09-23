@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-09-22 · 阶段 2（界面）
+
+### 完成了什么
+
+- **双语字典集中化**（D22）：新建 `src/i18n/dict.js`，删掉阶段 1 的 `i18n/unsupported.js`。三条自动化守卫：中英键集合一致、占位符一一对应、`errors` 覆盖引擎每一个错误码
+- **语言切换**：默认跟随浏览器，可手动切换，记在 localStorage（隐私模式下存不了也不影响使用）
+- **完整界面**：拖放区（含键盘操作）、文件卡片、DPI 分段控件、质量滑块、页码范围、进度条、取消、下载、结果缩略图
+- **下载**：单页直接给 JPG，多页打包 ZIP（JSZip 懒加载，STORE 模式）
+- **不支持提示接入正式页面**，与引擎加载失败共用同一个出口
+- **移动端**：触控目标 ≥44px、输入框 16px 防 iOS 自动放大、安全区内边距
+- 新增 `src/ui/format.js`、`src/ui/download.js`；测试从 102 增至 **156** 个
+
+### 浏览器实测（Chrome + 生产构建 `npm run preview`）
+
+| 项 | 结果 |
+|---|---|
+| 10 页转换 | **406 ms**，ZIP 按钮显示「Download ZIP (10 images)」，10 张缩略图 |
+| ZIP 内容 | 拦截下载读回校验：10 个条目、`_p01`…`_p10`、JPEG magic bytes 正确、包名 `fifty-pages_jpg.zip` |
+| 单页 | 直接下载 `single-page_p1.jpg`，不打包 |
+| 语言切换 | html lang、标题、meta 描述、静态与动态文案、页脚、切换按钮 aria-label 全部跟着变，并写入 localStorage |
+| 页码范围 0 / 5-3 / 48-99 / abc | 四条都给出**具体**提示，例如「This PDF has 50 pages, so page 99 does not exist.」 |
+| 损坏 PDF / 非 PDF 文件 | 各自对应的友好提示 |
+| 取消 | 回到设置步骤，结果清空，**未触发任何下载** |
+| 运行时网络 | 6 个请求全部同源 + blob，**零外部请求** |
+| 移动端 375×812 | 无横向溢出，8 个触控目标全部 ≥44px，中文文件名正常显示 |
+
+### 卡在哪里 / 需要 Leo 做的事
+
+- **iPhone Safari 实测没做成**。本机只有 Xcode 命令行工具，没有完整 Xcode，iOS 模拟器起不来。
+  若要我以后能自己验，需要：装 Xcode（App Store 免费），然后运行 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`（需要密码，我不能代跑）。
+  在那之前，阶段 2 验收的「iPhone Safari 一次 10 页转换」需要你在真机上完成。
+
+### 一条排错结论（下次别再被骗）
+
+开发模式的性能不能当真实性能：同样 10 页，`npm run dev` 要 30 秒以上（Vite 每次传输 9.7 MB 的 worker 源文件），`npm run preview` 只要 406 ms。怀疑性能问题时先切生产构建复现。
+
+### 下一步
+
+阶段 3：鲁棒性。加密 PDF 密码框、中日韩字体（cmaps/standard_fonts）、200 页警告、Playwright 自动化 + 网络拦截（「无外部请求」的权威检查）、`fixtures/manual/` 缺失时自动跳过。
+
+---
+
 ## 2026-09-22 · 阶段 1（转换引擎）
 
 ### 完成了什么

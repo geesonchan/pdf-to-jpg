@@ -5,9 +5,9 @@
 
 线上地址：<https://geesonchan.github.io/pdf-to-jpg/>
 
-> 状态：开发中（阶段 0 · 脚手架）。当前线上只是占位页。
+> 状态：开发中（阶段 2 · 界面已可用）。核心转换流程已经能用，鲁棒性与隐私加固在阶段 3、4。
 
-## 特性（v1 目标）
+## 特性
 
 - 选择或拖入一个 PDF，逐页转成 JPG
 - 分辨率 72 / 150 / 300 DPI，JPG 质量 0.5–0.95
@@ -50,9 +50,9 @@ Turn every page of a PDF into a JPG image. Free, open source, bilingual (中文 
 
 Live: <https://geesonchan.github.io/pdf-to-jpg/>
 
-> Status: under construction (phase 0 — scaffolding). The live site is a placeholder for now.
+> Status: under construction (phase 2 — the UI works). The core conversion flow is usable; robustness and privacy hardening come in phases 3 and 4.
 
-## Features (v1 goals)
+## Features
 
 - Drop in a PDF, get one JPG per page
 - 72 / 150 / 300 DPI, JPG quality 0.5–0.95

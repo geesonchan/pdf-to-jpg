@@ -1,0 +1,94 @@
+:root {
+  --bg: #fbfbfa;
+  --fg: #1a1a18;
+  --muted: #6b6b66;
+  --accent: #1c5d3a;
+  --rule: #e2e2dd;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17171a;
+    --fg: #ececea;
+    --muted: #9b9b96;
+    --accent: #7fd1a3;
+    --rule: #2e2e33;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  line-height: 1.6;
+  /* iPhone 底部安全区 */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 3rem 1rem 2rem;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  margin: 0 0 1.5rem;
+  font-size: 1.1rem;
+}
+
+.privacy {
+  margin: 0 0 2.5rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-weight: 500;
+}
+
+.status h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.status p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.footer {
+  border-top: 1px solid var(--rule);
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.footer a {
+  color: inherit;
+}
+
+.sep {
+  margin: 0 0.4rem;
+  opacity: 0.5;
+}

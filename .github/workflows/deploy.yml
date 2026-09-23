@@ -1,0 +1,72 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 发布到 GitHub Pages 所需的最小权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同时只允许一个发布在跑，新的排队但不取消进行中的
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test-and-build:
+    name: Test & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Assert no external URLs in HTML/CSS output (constraint C1/C4)
+        run: |
+          # 只扫 index.html 与 CSS。不扫 JS 产物：pdf.js 内含命名空间等字符串常量，
+          # 会误报（见 DECISIONS.md D16）。权威检查是阶段 3 的 Playwright 网络拦截。
+          # 先确认真的有东西可扫，否则「零命中」会被误当成通过
+          count=$(find dist -type f \( -name '*.html' -o -name '*.css' \) | wc -l)
+          echo "Scanning $count HTML/CSS file(s) in dist/."
+          if [ "$count" -eq 0 ]; then echo "::error::No HTML/CSS found in dist/."; exit 1; fi
+          if grep -rIoE --include='*.html' --include='*.css' 'https?://[^"'"'"' )]+' dist/ \
+             | grep -vE 'https?://(www\.)?(w3\.org|github\.com/geesonchan)' ; then
+            echo "::error::Found an external URL in dist HTML/CSS — violates C1/C4."
+            exit 1
+          fi
+          echo "No unexpected external URLs in dist HTML/CSS."
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: test-and-build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
